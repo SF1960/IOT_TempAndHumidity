@@ -1,0 +1,87 @@
+:Author:  ard12sgf1960
+:Email:   sgfpcb@gmail.com
+:Date:    25/05/2023 - 28/01/2025
+:License: Public Domain
+:Board: ESP32 C3 #23
+
+=== REVISION
+
+|===
+| Rev | File name                 | Revision Description                                 | Date       
+| 01  | Xiao_Weather_may25a.ino   | DHT11 and Arduino upload                             | May 2023 
+| 02  | Xiao_Weather_may25a.ino   | Added OLED for local display                         | 19/06/2023 
+| 03  | Xiao_Weather_may25a.ino   | Added graphs for temp & hum                          | 21/06/2023 
+| 04  | Xiao_sensor23_Kitchen.ino | Added DEBUG check for USB or Power supply connection | 28/01/2025
+|===
+
+= Project: {Xiao_Weather_Module}
+
+Interrogate a DHT11, display on an OLED and upload to Arduino IOT
+
+== Step 1: Installation
+
+1. Set up your device on Ardiuno
+2. Add the variables to a Thing associated with your device
+
+=== IOT variables
+Variables for Arduino IOT you need for this project.
+
+|===
+| Type    | Variable name       | Description 
+| String  | xiao_19_comfort;    | text variable to hold comfort information
+| float   | xiao_19_depoint;    | float variable dewpoint (spelt wrong)  
+| float   | xiao_19_heatindex;  | heatindex calculated by the DHT11
+| float   | xiao_19_humidity;   | humidity read from the DHT11
+| float   | xiao_19_temperature;| temperature read from the DHT11
+| String  | monitor             | text to transer to IOT and display in Dashboard
+| Counter | transer             | number of transfers since last reboot
+| Cloud   | kitchen_Temp        | Google Home variable
+| Cloud   | kitchen_Hum         | Google Home variable
+|===
+
+3. Change the code in thingProperties.h to include your unique ID const char DEVICE_LOGIN_NAME[]  = "a9ea85e0-a199-4816-aca4-a77a6ac14ddf" 
+4. Add your internet details on the Secrets.h
+5. load to your device
+6. Create a dashboard to show the outputs
+
+== Step 2: Assemble the circuit
+
+Assemble the circuit following the diagram
+https://docs.google.com/presentation/d/1hTUz1Hp7VY78p8bmz5qu4TxKcREXv8t9z5fQGb-T_XE/edit?usp=sharing
+attached to the sketch
+
+== Step 3: Load the code
+
+Upload the code contained in this sketch on to your board
+
+=== Folder structure
+
+....
+ Xiao_Weather_may25a                => Arduino sketch folder
+  ├── Xiao_Weather_may25a.ino       => main Arduino file
+  ├── thingProperties.h             => Arduino IOT library components
+  ├── arduino_secrets.h             => WiFi and Device ID information
+  └── ReadMe.adoc                   => this file
+....
+
+=== License
+This project is released under a {PUBLIC} License.
+
+=== Contributing
+To contribute to this project please contact: mailto:steve.g.fuller@gmail.com
+
+=== BOM
+
+|===
+| ID | Part name      | Part number            | Quantity | Website 
+| U1 | Xiao ESP32C3   | SEEED-113991054        |    1     | https://shop.pimoroni.com/products/seeed-studio-xiao-esp32c3?variant=40110502215763   
+| U2 | OLED Display   | GeeekPi 2pcs 0.96 Inch |    1     | https://www.amazon.co.uk
+| U3 | DHT11 Sensor   | DHT11                  |    1     | https://learn.adafruit.com/dht/overview
+| R1 | 10k Resistor   |                        |    1     |     
+|===
+
+
+=== Help
+This document is written in the _AsciiDoc_ format, a markup language to describe documents. 
+If you need help you can search the http://www.methods.co.nz/asciidoc[AsciiDoc homepage]
+or consult the http://powerman.name/doc/asciidoc[AsciiDoc cheatsheet]
