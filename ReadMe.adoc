@@ -7,11 +7,13 @@
 === REVISION
 
 |===
-| Rev | File name                 | Revision Description                                 | Date       
-| 01  | Xiao_Weather_may25a.ino   | DHT11 and Arduino upload                             | May 2023 
-| 02  | Xiao_Weather_may25a.ino   | Added OLED for local display                         | 19/06/2023 
-| 03  | Xiao_Weather_may25a.ino   | Added graphs for temp & hum                          | 21/06/2023 
-| 04  | Xiao_sensor23_Kitchen.ino | Added DEBUG check for USB or Power supply connection | 28/01/2025
+| Rev | File name                   | Revision Description                                   | Date       
+| 01  | Xiao_Weather_may25a.ino     | DHT11 and Arduino upload                               | May 2023 
+| 02  | Xiao_Weather_may25a.ino     | Added OLED for local display                           | 19/06/2023 
+| 03  | Xiao_Weather_may25a.ino     | Added graphs for temp & hum                            | 21/06/2023 
+| 04  | Xiao_sensor23_Kitchen.ino   | Added DEBUG check for USB or Power supply connection   | 28/01/2025
+| 05  | sensor23_Kitchen_aug21a.ino | Improved GMT/BST detection and display of correct time | 20/04/2025
+| 05  | sensor23_Kitchen_aug21a.ino | Added a device restart function after 24 hours         | 26/04/2025
 |===
 
 = Project: {Xiao_Weather_Module}
