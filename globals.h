@@ -45,6 +45,12 @@ float lowTempVal = 0;                             // low scale temperature
 float highTempVal = 40;                           // high scale temperature
 float lowHumVal = 0;                              // low humidity scale
 float highHumVal = 100;                           // high humidity scale
+// Checking for weather reading anomolies
+float lastTemperature = 0;
+float lastHumidity = 0;
+bool isFirstReading = true;
+const float TEMP_ANOMALY_THRESHOLD = 5.0;  // 5°C change threshold
+const float HUM_ANOMALY_THRESHOLD = 5.0;   // 5% humidity change threshold
 
 // time variables
 const char* ntpServer = "pool.ntp.org";           // ntp server
@@ -60,5 +66,9 @@ unsigned long  transferNumber = 0;                // the number of transfers to 
 // restart ESP variables
 const unsigned long RESTART_INTERVAL = 86400000;  // 24 hours in milliseconds
 unsigned long startTime;
+
+// system health report variables
+unsigned long lastSystemReport = 0;
+const unsigned long SYSTEM_REPORT_INTERVAL = 3600000; // Report once per hour
 
 char buffer[40];
