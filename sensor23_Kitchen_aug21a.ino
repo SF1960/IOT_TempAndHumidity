@@ -14,6 +14,7 @@
              Now includes more USB debug output data
              Has GMT/BST function to correctly adjust time
              Includes hourly system output and 24-hour device restart
+             Added device system info fo reporting to USB monitor cloud variable
 */
 
 /*
@@ -88,6 +89,23 @@ bool getTemperature() {
 
   TempAndHumidity newValues = dht.getTempAndHumidity();
 
+  // Update min/max temperature and humidity
+  if (newValues.temperature < minTemperature) minTemperature = newValues.temperature;
+  if (newValues.temperature > maxTemperature) maxTemperature = newValues.temperature;
+  if (newValues.humidity < minHumidity) minHumidity = newValues.humidity;
+  if (newValues.humidity > maxHumidity) maxHumidity = newValues.humidity;
+  
+  // Reset extremes once per day if needed
+  unsigned long currentMillis = millis();
+  if (currentMillis - lastExtremeReset >= EXTREMES_RESET_INTERVAL) {
+    lastExtremeReset = currentMillis;
+    // Don't reset to default values immediately - take current reading as new baseline
+    minTemperature = maxTemperature = newValues.temperature;
+    minHumidity = maxHumidity = newValues.humidity;
+    Serial.println(device + "Daily reset of temperature/humidity extremes");
+  }
+
+  
   if (dht.getStatus() != 0) {                     // Check if any reads failed and exit early (to try again).
 
     Serial.println(device + "DHT11 error status: " + String(dht.getStatusString()));
@@ -159,7 +177,7 @@ bool getTemperature() {
   kitchen_Hum = newValues.humidity;
 
   // monitor variable
-  monitor = "Temp: " + String(newValues.temperature) + "C : " + String(newValues.humidity) + "%RH"; 
+  monitor = "Readings changed - Temp: " + String(newValues.temperature) + "C : Hum: " + String(newValues.humidity) + "%RH"; 
 
   return true;
 
@@ -282,18 +300,77 @@ void checkEnvironmentalAnomalies() {
   }
 }
 
+// Generate a comprehensive health report
+String generateHealthReport() {
+  // Calculate uptime in hours and minutes
+  String uptime = String((millis() - startTime) / 3600000) + "h " + 
+                 String(((millis() - startTime) % 3600000) / 60000) + "m";
+  
+  // Get system information - improved temperature reading
+  float cpuTemp;
+  #ifdef CONFIG_IDF_TARGET_ESP32C3
+    // ESP32-C3 specific method
+    cpuTemp = (float)temperatureRead();
+    // The raw reading needs calibration - typically offset by 10-20°C
+    cpuTemp = cpuTemp - 20.0; // Adjust this offset based on testing
+  #else
+    // Standard method with Fahrenheit conversion
+    cpuTemp = (temperatureRead() - 32) / 1.8;
+  #endif
+  
+  uint32_t freeHeap = ESP.getFreeHeap();
+  uint32_t heapSize = ESP.getHeapSize();
+  uint8_t heapUsedPercent = 100 - ((freeHeap * 100) / heapSize);
+
+  // WiFi quality metrics
+  int rssi = WiFi.RSSI();
+  String wifiQuality;
+  if (rssi > -50) wifiQuality = "Excellent";
+  else if (rssi > -60) wifiQuality = "Very Good";
+  else if (rssi > -70) wifiQuality = "Good";
+  else if (rssi > -80) wifiQuality = "Fair";
+  else wifiQuality = "Poor";
+
+  String wifiStats = String(rssi) + "dBm (" + wifiQuality + ")";
+  if (wifiDisconnections > 0) {
+    wifiStats += " | Disconnects: " + String(wifiDisconnections);
+  }
+  
+  // Generate the basic report string
+  String report = "HEALTH | Uptime: " + uptime + 
+                 " | CPU: " + String(cpuTemp, 1) + "°C" +
+                 " | Heap: " + String(freeHeap/1024) + "K (" + String(heapUsedPercent) + "% used)" + 
+                 " | WiFi: " + wifiStats +
+                 " | Syncs: " + String(successfulSyncs) +
+                 " | Flash: " + String(ESP.getFlashChipSize()/1024/1024) + "MB";
+  
+  // Add environmental extremes
+  report += " | EXTREMES: Temp " + String(minTemperature, 1) + "°C to " + 
+            String(maxTemperature, 1) + "°C | Hum " + 
+            String(minHumidity, 1) + "% to " + String(maxHumidity, 1) + "%";
+ 
+  return report;
+}
+
+
 // system report displayed on USBMontior every hour
 void reportSystemHealth() {
   if (millis() - lastSystemReport >= SYSTEM_REPORT_INTERVAL) {
     lastSystemReport = millis();
     
-    String uptime = String((millis() - startTime) / 3600000) + "h " + 
-                   String(((millis() - startTime) % 3600000) / 60000) + "m";
+    // Get the health report
+    String healthReport = generateHealthReport();
     
-    monitor = "HEALTH | Uptime: " + uptime + 
-             " | Free heap: " + String(ESP.getFreeHeap()) + 
-             " | WiFi: " + String(WiFi.RSSI()) + "dBm" +
-             " | Transfers: " + String(transferNumber);
+    // Add transfer number to the report (specific to periodic reporting)
+    healthReport += " | Transfers: " + String(transferNumber);
+    
+    // Log to Serial
+    Serial.println("=== HOURLY SYSTEM HEALTH REPORT ===");
+    Serial.println(healthReport);
+    Serial.println("===================================");
+    
+    // Send to cloud
+    monitor = healthReport;
     ArduinoCloud.update();
   }
 }
@@ -409,6 +486,10 @@ void setup() {
 
   // Update the IoT Cloud monitor variable
   monitor = "Device booted (count: " + String(counter) + ") at " + ntpTime;
+  // Generate and send initial health report
+  String bootReport = generateHealthReport();
+  bootReport = "BOOT | " + bootReport + " | Boot count: " + String(counter);
+  monitor = bootReport;
   ArduinoCloud.update();
   
   Serial.println("**** SET UP COMPLETE ****");
@@ -785,6 +866,7 @@ void doThisOnSync(){
   ArduinoCloud.update();                          // update IoT
   delay(500);                                     // small delay to stabilise update
   flagSync = true;                                // that's ok the loop will continue to update the datas
+  successfulSyncs++;
 }
 
 // run routine when IOT reports connection
@@ -802,7 +884,10 @@ void onNetworkConnect() {
 void onNetworkDisconnect() {
   Serial.print(">>>> DISCONNECTED from network: ");
   Serial.println(SECRET_SSID);
-
+  
+  wifiDisconnections++;
+  lastWifiUptime = millis();
+  
   monitor = "WiFi DISCONNECTED | Attempting reconnection...";
   ArduinoCloud.update();
   
@@ -812,6 +897,10 @@ void onNetworkDisconnect() {
 void onNetworkError() {
   Serial.println(">>>> NETWORK ERROR !");
 
+  if (lastWifiUptime > 0) {
+    totalWifiDowntime += (millis() - lastWifiUptime);
+  }
+  
   monitor = "WiFi ERROR | Failed to connect to " + String(SSID);
   ArduinoCloud.update();
   
