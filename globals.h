@@ -71,4 +71,22 @@ unsigned long startTime;
 unsigned long lastSystemReport = 0;
 const unsigned long SYSTEM_REPORT_INTERVAL = 3600000; // Report once per hour
 
+// WiFi quality metrics
+int wifiDisconnections = 0;
+unsigned long lastWifiUptime = 0;
+unsigned long totalWifiDowntime = 0;
+
+// Synchronization tracking
+int successfulSyncs = 0;
+int failedSyncAttempts = 0;
+
+// Min/Max environmental readings
+float minTemperature = 100.0;  // Start with unrealistically high value
+float maxTemperature = -40.0;  // Start with unrealistically low value
+float minHumidity = 101.0;     // Start with unrealistically high value
+float maxHumidity = -1.0;      // Start with unrealistically low value
+unsigned long lastExtremeReset = 0;
+const unsigned long EXTREMES_RESET_INTERVAL = 86400000; // 24 hours in milliseconds
+
+
 char buffer[40];
