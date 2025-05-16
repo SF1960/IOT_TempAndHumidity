@@ -1,4 +1,10 @@
-// environmentHelper.h
+/*******************************************************************************
+*
+* environmentHelper.h
+* Standalone function for environment monitoring
+*
+*******************************************************************************/
+
 #ifndef ENVIRONMENT_HELPER_H
 #define ENVIRONMENT_HELPER_H
 
@@ -46,6 +52,8 @@ namespace environment {
       lastHumidity = humidity;
       isInitialized = true;
       Serial.println(device + "Environmental monitoring initialized");
+      monitor = "Device " + device + "Environmental monitoring initialized. Data alert thresholds now monitored and reported when breached.";
+      ArduinoCloud.update();
       return;
     }
     
