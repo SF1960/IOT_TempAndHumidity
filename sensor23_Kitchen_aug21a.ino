@@ -6,15 +6,16 @@
   Version History
   Arduino now supports Home Integration which allows the temperature readingon Android
   Device randomly freezes without error message so added device restart after 100 transfers. This is now deprecated
-  2025/01/28 Added Preferences library to store a boot counter
-  2025/01/29 Added DEBUG value check to skip connecting to Serial Monitor when not connected to a PC
-  2025/04/20 Changed the GMT/BST date check to use last Sunday of March and October to set time
-  2025/04/26 Added a 24-hour restart function
-  2025-05-15 Rrewritten sketch after Arduino AI ruined original
+  2025/01/28 V1 Added Preferences library to store a boot counter
+  2025/01/29 V2 Added DEBUG value check to skip connecting to Serial Monitor when not connected to a PC
+  2025/04/20 V3 Changed the GMT/BST date check to use last Sunday of March and October to set time
+  2025/04/26 V4 Added a 24-hour restart function
+  2025-05-15 V5 Rewritten sketch after Arduino AI ruined original
              Now includes more USB debug output data
              Has GMT/BST function to correctly adjust time
              Includes hourly system output and 24-hour device restart
              Added device system info fo reporting to USB monitor cloud variable
+  2025-08-16 V6 Included 2 local files timeHelper.h and systemHealth.h
 */
 
 /*
@@ -61,6 +62,8 @@ Preferences preferences;
 #include "monitorHelper.h"                          // Serial monitor local library
 #include "envHelper.h"                              // ENVIII module local library
 #include "oledHelper.h"                             // local library for the OLED screen
+#include "timeHelper.h"                              // set up ntp and obtain time
+#include "systemHealthHelper.h"                      // system health helper file
 
 /*****************************************************************************
 '* Program debugging
@@ -183,59 +186,6 @@ bool getTemperature() {
 
 } // bool getTemperature()
 
-/************************************************************
-// get time from ntp server and format output string
-************************************************************/
-void obtainTime() {
-
-  struct tm timeinfo;
-  if(!getLocalTime(&timeinfo)){
-    Serial.println("Failed to obtain time");
-    return;
-  }
-
-  // Deal with GMT/BST - UK uses BST between last Sunday in March and last Sunday in October
-  // Month in tm struct is 0-based (0-11)
-  ntpHour = timeinfo.tm_hour;
-  
-  // Check if it's between March and October (BST months)
-  if (timeinfo.tm_mon > 2 && timeinfo.tm_mon < 10) {
-    ntpHour += 1; // Add 1 hour for BST
-  }
-  // Special handling for March (when BST starts)
-  else if (timeinfo.tm_mon == 2) {
-    // Check if we're in the last Sunday or after
-    // Last Sunday is the day when (31 - day_of_week) <= date <= 31
-    int lastSunday = 31 - (timeinfo.tm_wday == 0 ? 7 : timeinfo.tm_wday);
-    if (timeinfo.tm_mday >= lastSunday) {
-      ntpHour += 1; // Add 1 hour for BST
-    }
-  }
-  // Special handling for October (when BST ends)
-  else if (timeinfo.tm_mon == 9) {
-    // Check if we're before the last Sunday
-    int lastSunday = 31 - (timeinfo.tm_wday == 0 ? 7 : timeinfo.tm_wday);
-    if (timeinfo.tm_mday < lastSunday) {
-      ntpHour += 1; // Still in BST
-    }
-  }
-
-  // Handle day wrap for hour values
-  if (ntpHour > 23) {
-    ntpHour -= 24;
-  }
-
-  // Add zero to hours where less than 10
-  strHour = (ntpHour < 10) ? "0" + String(ntpHour) : String(ntpHour);
-
-  // Add zero to minutes where less than 10
-  strMin = (timeinfo.tm_min < 10) ? "0" + String(timeinfo.tm_min) : String(timeinfo.tm_min);
-
-  // Add hours and minutes
-  ntpTime = strHour + ":" + strMin;
-
-}
-
 
 /************************************************************
 // Check for significant environmental changes
@@ -297,108 +247,6 @@ void checkEnvironmentalAnomalies() {
     lastTemperature = xiao_19_temperature;
     lastHumidity = xiao_19_humidity;
     lastUpdateTime = millis();
-  }
-}
-
-// Generate a comprehensive health report
-String generateHealthReport() {
-  // Calculate uptime in hours and minutes
-  String uptime = String((millis() - startTime) / 3600000) + "h " + 
-                 String(((millis() - startTime) % 3600000) / 60000) + "m";
-  
-  // Get system information - improved temperature reading
-  float cpuTemp;
-  #ifdef CONFIG_IDF_TARGET_ESP32C3
-    // ESP32-C3 specific method
-    cpuTemp = (float)temperatureRead();
-    // The raw reading needs calibration - typically offset by 10-20°C
-    cpuTemp = cpuTemp - 20.0; // Adjust this offset based on testing
-  #else
-    // Standard method with Fahrenheit conversion
-    cpuTemp = (temperatureRead() - 32) / 1.8;
-  #endif
-  
-  uint32_t freeHeap = ESP.getFreeHeap();
-  uint32_t heapSize = ESP.getHeapSize();
-  uint8_t heapUsedPercent = 100 - ((freeHeap * 100) / heapSize);
-
-  // WiFi quality metrics
-  int rssi = WiFi.RSSI();
-  String wifiQuality;
-  if (rssi > -50) wifiQuality = "Excellent";
-  else if (rssi > -60) wifiQuality = "Very Good";
-  else if (rssi > -70) wifiQuality = "Good";
-  else if (rssi > -80) wifiQuality = "Fair";
-  else wifiQuality = "Poor";
-
-  String wifiStats = String(rssi) + "dBm (" + wifiQuality + ")";
-  if (wifiDisconnections > 0) {
-    wifiStats += " | Disconnects: " + String(wifiDisconnections);
-  }
-  
-  // Generate the basic report string
-  String report = "HEALTH | Uptime: " + uptime + 
-                 " | CPU: " + String(cpuTemp, 1) + "°C" +
-                 " | Heap: " + String(freeHeap/1024) + "K (" + String(heapUsedPercent) + "% used)" + 
-                 " | WiFi: " + wifiStats +
-                 " | Syncs: " + String(successfulSyncs) +
-                 " | Flash: " + String(ESP.getFlashChipSize()/1024/1024) + "MB";
-  
-  // Add environmental extremes
-  report += " | EXTREMES: Temp " + String(minTemperature, 1) + "°C to " + 
-            String(maxTemperature, 1) + "°C | Hum " + 
-            String(minHumidity, 1) + "% to " + String(maxHumidity, 1) + "%";
- 
-  return report;
-}
-
-
-// system report displayed on USBMontior every hour
-void reportSystemHealth() {
-  if (millis() - lastSystemReport >= SYSTEM_REPORT_INTERVAL) {
-    lastSystemReport = millis();
-    
-    // Get the health report
-    String healthReport = generateHealthReport();
-    
-    // Add transfer number to the report (specific to periodic reporting)
-    healthReport += " | Transfers: " + String(transferNumber);
-    
-    // Log to Serial
-    Serial.println("=== HOURLY SYSTEM HEALTH REPORT ===");
-    Serial.println(healthReport);
-    Serial.println("===================================");
-    
-    // Send to cloud
-    monitor = healthReport;
-    ArduinoCloud.update();
-  }
-}
-
-// Restart after 24 hours
-void checkUptimeRestart() {
-  unsigned long currentTime = millis();
-
-  // 1 minute warning before restart
-  if (currentTime - startTime >= RESTART_INTERVAL - 60000 && 
-      currentTime - startTime < RESTART_INTERVAL - 59000) {
-    monitor = "WARNING: Planned restart in 1 minute";
-    ArduinoCloud.update();
-  }
-  
-  // Check if 24 hours have passed
-  if (currentTime - startTime >= RESTART_INTERVAL) {
-    // Log restart to monitor variable
-    monitor = "Planned restart after 24h uptime";
-    ArduinoCloud.update();
-    
-    // Small delay to ensure the message is sent
-    delay(1000);
-    
-    // Restart the device
-    Serial.println("Performing planned 24h restart...");
-    Serial.flush();
-    ESP.restart();
   }
 }
 
@@ -477,9 +325,10 @@ void setup() {
   }
   while (!flagSync);                      // flag set to true from callback function doThisOnSync()
 
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  //configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  timeUtility::setup();
   delay (1000); // wait for ntp to sync
-  obtainTime();
+  timeUtility::obtainTime();
     
   Serial.printf(buffer,"DHT Xiao ESP32 example with tasks");
   Serial.println(buffer);
@@ -487,14 +336,14 @@ void setup() {
   // Update the IoT Cloud monitor variable
   monitor = "Device booted (count: " + String(counter) + ") at " + ntpTime;
   // Generate and send initial health report
-  String bootReport = generateHealthReport();
+  String bootReport = systemHealth::generateHealthReport();
   bootReport = "BOOT | " + bootReport + " | Boot count: " + String(counter);
   monitor = bootReport;
   ArduinoCloud.update();
   
   Serial.println("**** SET UP COMPLETE ****");
 
-} // void setup)()
+} // void setup()
 
 // ************************************************************
 // * Main Program
@@ -505,8 +354,8 @@ void loop() {
 
   getTemperature();                // get data from DHT11 and update IOT variables
   ArduinoCloud.update();           // update the Arduino IOT
-  checkUptimeRestart();            // restart device every 24 hours
-  reportSystemHealth();            // System report every hour
+  systemHealth::checkUptimeRestart();            // restart device every 24 hours
+  systemHealth::reportSystemHealth();            // System report every hour
   
   transferNumber ++;
   transfers = transferNumber;             // update Cloud Variable
@@ -557,7 +406,7 @@ void loop() {
 
   // display data one page at a time
   // **** TEMPERATURE DISPLAY ****
-  obtainTime();                              // obtain the time and update IOT variable
+  timeUtility::obtainTime();                              // obtain the time and update IOT variable
   ArduinoCloud.update();                     // update the Arduino IOT
   display.clearDisplay();
   displayPrint(MEDIUM, 42, 0, "TEMP");
