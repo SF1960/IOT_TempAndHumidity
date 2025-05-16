@@ -1,4 +1,9 @@
-// standalone function for system health reporting
+/*******************************************************************************
+*
+* systemHelper.h
+* Standalone function for system health reporting
+*
+*******************************************************************************/
 
 // systemHealthHelper.h
 #ifndef SYSTEM_HEALTH_HELPER_H
@@ -67,7 +72,8 @@ namespace systemHealth {
       lastSystemReport = millis();
       
       // Get the health report
-      String healthReport = generateHealthReport();
+      String healthReport = "HOURLY report | ";
+      healthReport += generateHealthReport();
       
       // Add transfer number to the report (specific to periodic reporting)
       healthReport += " | Transfers: " + String(transferNumber);
