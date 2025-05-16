@@ -15,7 +15,8 @@
              Has GMT/BST function to correctly adjust time
              Includes hourly system output and 24-hour device restart
              Added device system info fo reporting to USB monitor cloud variable
-  2025-08-16 V6 Included 2 local files timeHelper.h and systemHealth.h
+  2025-05-16 V6 Included 2 local files timeHelper.h and systemHealth.h
+  2025-05-16 V7 Included a environmentHelper. h 
 */
 
 /*
@@ -64,6 +65,7 @@ Preferences preferences;
 #include "oledHelper.h"                             // local library for the OLED screen
 #include "timeHelper.h"                              // set up ntp and obtain time
 #include "systemHealthHelper.h"                      // system health helper file
+#include "environmentHelper.h"                      // the updateExtreme(), updateExtremes, checkAnomalies and getComfortStatus() functions
 
 /*****************************************************************************
 '* Program debugging
@@ -131,7 +133,7 @@ bool getTemperature() {
 
   // get comfortStatus from DHT11 and use Select Case function to determine String
 
-  String comfortStatus;
+  /*String comfortStatus;
   switch (cf) {
     case Comfort_OK:
       comfortStatus = "OK";
@@ -163,7 +165,7 @@ bool getTemperature() {
     default:
       comfortStatus = "Unknown:";
       break;
-  };
+  };*/
 
 
   // *******************************************************
@@ -171,7 +173,7 @@ bool getTemperature() {
   // *******************************************************
   xiao_19_temperature = newValues.temperature;
   xiao_19_humidity = newValues.humidity;
-  xiao_19_comfort = comfortStatus;
+  xiao_19_comfort = environment::getComfortStatus(cf);
   //xiao_19_depoint = dewpoint;
   //xiao_19_heatindex = heatindex;
 
@@ -182,6 +184,9 @@ bool getTemperature() {
   // monitor variable
   monitor = "Readings changed - Temp: " + String(newValues.temperature) + "C : Hum: " + String(newValues.humidity) + "%RH"; 
 
+// Check for any significant changes in environment
+  environment::checkAnomalies(newValues.temperature, newValues.humidity);
+  
   return true;
 
 } // bool getTemperature()
@@ -191,6 +196,7 @@ bool getTemperature() {
 // Check for significant environmental changes
 // Reports when temperature changes by 5°C or humidity by 5%
 ************************************************************/
+/*
 void checkEnvironmentalAnomalies() {
   // Define threshold values for significant changes
   const float TEMP_CHANGE_THRESHOLD = 5.0;   // °C
@@ -248,7 +254,7 @@ void checkEnvironmentalAnomalies() {
     lastHumidity = xiao_19_humidity;
     lastUpdateTime = millis();
   }
-}
+}*/
 
 // *****************************************************
 // * Set up function
