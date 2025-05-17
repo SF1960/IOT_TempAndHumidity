@@ -17,6 +17,7 @@
              Added device system info fo reporting to USB monitor cloud variable
   2025-05-16 V6 Included 2 local files timeHelper.h and systemHealth.h
   2025-05-16 V7 Included a environmentHelper. h 
+  2025-05-17 V7.1 Small change to ComfortStatus call and output to Comfort Level
 */
 
 /*
@@ -59,13 +60,14 @@
 
 #include "globals.h"                                // global variables, constants and declarations
 #include <Preferences.h>
-Preferences preferences;
 #include "monitorHelper.h"                          // Serial monitor local library
 #include "envHelper.h"                              // ENVIII module local library
 #include "oledHelper.h"                             // local library for the OLED screen
-#include "timeHelper.h"                              // set up ntp and obtain time
-#include "systemHealthHelper.h"                      // system health helper file
+#include "timeHelper.h"                             // set up ntp and obtain time
+#include "systemHealthHelper.h"                     // system health helper file
 #include "environmentHelper.h"                      // the updateExtreme(), updateExtremes, checkAnomalies and getComfortStatus() functions
+
+Preferences preferences;
 
 /*****************************************************************************
 '* Program debugging
@@ -129,53 +131,19 @@ bool getTemperature() {
   // call functions and return results from DHT11
   float heatindex = dht.computeHeatIndex(newValues.temperature, newValues.humidity);
   float dewpoint = dht.computeDewPoint(newValues.temperature, newValues.humidity);
+  
+  // Store the comfort state in a local variable first, calculate once
+  ComfortState comfort_state;
   float cr = dht.getComfortRatio(cf, newValues.temperature, newValues.humidity);
-
-  // get comfortStatus from DHT11 and use Select Case function to determine String
-
-  /*String comfortStatus;
-  switch (cf) {
-    case Comfort_OK:
-      comfortStatus = "OK";
-      break;
-    case Comfort_TooHot:
-      comfortStatus = "Too Hot";
-      break;
-    case Comfort_TooCold:
-      comfortStatus = "Too Cold";
-      break;
-    case Comfort_TooDry:
-      comfortStatus = "Too Dry";
-      break;
-    case Comfort_TooHumid:
-      comfortStatus = "Too Humid";
-      break;
-    case Comfort_HotAndHumid:
-      comfortStatus = "Hot/Humid";
-      break;
-    case Comfort_HotAndDry:
-      comfortStatus = "Hot & Dry";
-      break;
-    case Comfort_ColdAndHumid:
-      comfortStatus = "Cold/Humid";
-      break;
-    case Comfort_ColdAndDry:
-      comfortStatus = "Cold/Dry";
-      break;
-    default:
-      comfortStatus = "Unknown:";
-      break;
-  };*/
-
+  // Now use the same comfort_state value for display
+  String comfortStatus = environment::getComfortStatus(comfort_state);     // get status from environmentHelper.h
 
   // *******************************************************
   // store results in Arduino IOT variables
   // *******************************************************
   xiao_19_temperature = newValues.temperature;
   xiao_19_humidity = newValues.humidity;
-  xiao_19_comfort = environment::getComfortStatus(cf);
-  //xiao_19_depoint = dewpoint;
-  //xiao_19_heatindex = heatindex;
+  xiao_19_comfort = comfortStatus; 
 
   // Google Home variables (must be on same WiFi network to work)
   kitchen_Temp = newValues.temperature;
@@ -184,77 +152,12 @@ bool getTemperature() {
   // monitor variable
   monitor = "Readings changed - Temp: " + String(newValues.temperature) + "C : Hum: " + String(newValues.humidity) + "%RH"; 
 
-// Check for any significant changes in environment
+  // Check for any significant changes in environment
   environment::checkAnomalies(newValues.temperature, newValues.humidity);
   
   return true;
 
 } // bool getTemperature()
-
-
-/************************************************************
-// Check for significant environmental changes
-// Reports when temperature changes by 5°C or humidity by 5%
-************************************************************/
-/*
-void checkEnvironmentalAnomalies() {
-  // Define threshold values for significant changes
-  const float TEMP_CHANGE_THRESHOLD = 5.0;   // °C
-  const float HUM_CHANGE_THRESHOLD = 5.0;    // %
-  
-  // Static variables to store previous readings and initialization state
-  static float lastTemperature = 0.0;
-  static float lastHumidity = 0.0;
-  static bool isInitialized = false;
-  
-  // Skip comparison on first run, just store initial values
-  if (!isInitialized) {
-    lastTemperature = xiao_19_temperature;
-    lastHumidity = xiao_19_humidity;
-    isInitialized = true;
-    Serial.println(device + "Environmental monitoring initialized");
-    return;
-  }
-  
-  // Check for significant temperature change
-  float tempDiff = abs(xiao_19_temperature - lastTemperature);
-  if (tempDiff >= TEMP_CHANGE_THRESHOLD) {
-    String message = "ALERT: Temperature changed by " + String(tempDiff, 1) + 
-                    "°C (from " + String(lastTemperature, 1) + 
-                    "°C to " + String(xiao_19_temperature, 1) + "°C)";
-    
-    Serial.println(device + message);
-    monitor = message;
-    ArduinoCloud.update();
-    
-    // Update stored temperature after reporting
-    lastTemperature = xiao_19_temperature;
-  }
-  
-  // Check for significant humidity change
-  float humDiff = abs(xiao_19_humidity - lastHumidity);
-  if (humDiff >= HUM_CHANGE_THRESHOLD) {
-    String message = "ALERT: Humidity changed by " + String(humDiff, 1) + 
-                    "% (from " + String(lastHumidity, 1) + 
-                    "% to " + String(xiao_19_humidity, 1) + "%)";
-    
-    Serial.println(device + message);
-    monitor = message;
-    ArduinoCloud.update();
-    
-    // Update stored humidity after reporting
-    lastHumidity = xiao_19_humidity;
-  }
-  
-  // If no significant changes, update stored values periodically
-  // This prevents small incremental changes from avoiding detection
-  static unsigned long lastUpdateTime = 0;
-  if (millis() - lastUpdateTime >= 3600000) { // Update reference values every hour
-    lastTemperature = xiao_19_temperature;
-    lastHumidity = xiao_19_humidity;
-    lastUpdateTime = millis();
-  }
-}*/
 
 // *****************************************************
 // * Set up function
@@ -329,12 +232,12 @@ void setup() {
       ESP.restart();
     }
   }
-  while (!flagSync);                      // flag set to true from callback function doThisOnSync()
+  while (!flagSync);                                          // flag set to true from callback function doThisOnSync()
 
   //configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-  timeUtility::setup();
-  delay (1000); // wait for ntp to sync
-  timeUtility::obtainTime();
+  timeUtility::setup();                                       // configure and connect to ntp server
+  delay (1000);                                               // wait for ntp to sync
+  timeUtility::obtainTime();                                  // get time from ntp server
     
   Serial.printf(buffer,"DHT Xiao ESP32 example with tasks");
   Serial.println(buffer);
