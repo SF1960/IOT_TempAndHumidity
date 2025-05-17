@@ -10,6 +10,7 @@
 
 #include <Arduino.h>
 #include "globals.h"
+#include "debugHelper.h"            // Include debug macros
 
 namespace environment {
   
@@ -51,7 +52,7 @@ namespace environment {
       lastTemperature = temperature;
       lastHumidity = humidity;
       isInitialized = true;
-      Serial.println(device + "Environmental monitoring initialized");
+      debug_println(device + "Environmental monitoring initialized");
       monitor = "Device " + device + "Environmental monitoring initialized. Data alert thresholds now monitored and reported when breached.";
       ArduinoCloud.update();
       return;
@@ -64,7 +65,7 @@ namespace environment {
                       "°C (from " + String(lastTemperature, 1) + 
                       "°C to " + String(temperature, 1) + "°C)";
       
-      Serial.println(device + message);
+      debug_println(device + message);
       monitor = message;
       ArduinoCloud.update();
       
@@ -79,7 +80,7 @@ namespace environment {
                       "% (from " + String(lastHumidity, 1) + 
                       "% to " + String(humidity, 1) + "%)";
       
-      Serial.println(device + message);
+      debug_println(device + message);
       monitor = message;
       ArduinoCloud.update();
       

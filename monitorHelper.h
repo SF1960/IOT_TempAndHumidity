@@ -1,6 +1,7 @@
 #pragma once
 
 #include "globals.h"
+#include "debugHelper.h"            // Include debug macros
 
 /*******************************************************************************
 *
@@ -13,7 +14,8 @@ namespace serial{
   void setup(int BAUD){
 
     Serial.begin(BAUD);
-    Serial.printf(">>>> Attempting to start serial monitor at %d\n", BAUD); 
+    debug_println(">>>> Attempting to start serial monitor at " + BAUD);
+    //Serial.printf(">>>> Attempting to start serial monitor at %d\n", BAUD); 
     
     // the following code can mean that the code WILL ONLY RUN if connected to a PC
     // so ONLY use if in DEBUG mode
@@ -24,8 +26,9 @@ namespace serial{
     } else {
       delay(1000);
     }
-  
-    Serial.printf(">>>> Serial started at %d\n", BAUD);
+
+      debug_println(">>>> Serial started at " + BAUD);
+    //Serial.printf(">>>> Serial started at %d\n", BAUD);
 
   }
 

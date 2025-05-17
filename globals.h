@@ -1,9 +1,11 @@
 #pragma once
 
 /**************************************************************************************
-* USER DEFINED PROGRAM INPUTS
 *
-* Please change your preferences below 
+* Global variables and constants
+*
+* For testing/debugging set DEBUG to 1
+* To turn off Debug.Print and not compile code set to 0 
 *
 ***************************************************************************************/
 
@@ -31,7 +33,7 @@ bool flagDisconnect = true;                       // IOT initialise
 long int startDisconnect;                         // start disconnection timer
 
 // Author and devices constants
-String const copyright = "(C)SGF2023/4";          // string to hold copyright information
+String const copyright = "(C)SGF2023/5";          // string to hold copyright information
 String const email = "sgfpcb@gmail.com";          // string to hold email address
 String const device = "#23: ";                    // board number for Serial Print command
 String const newLine = "\n";

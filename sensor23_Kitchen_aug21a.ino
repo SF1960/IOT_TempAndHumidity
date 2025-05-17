@@ -1,4 +1,6 @@
 #include "arduino_secrets.h"
+
+#include "arduino_secrets.h"
 #include "arduino_secrets.h"
 /*
   Sketch to interogate the DHT11, display the results and send to Arduino IOT
@@ -18,6 +20,7 @@
   2025-05-16 V6 Included 2 local files timeHelper.h and systemHealth.h
   2025-05-16 V7 Included a environmentHelper. h 
   2025-05-17 V7.1 Small change to ComfortStatus call and output to Comfort Level
+  2025-05-17 V8 Added a debugHelper.h file to use debug_print macros throughout the sketch
 */
 
 /*
@@ -66,6 +69,7 @@
 #include "timeHelper.h"                             // set up ntp and obtain time
 #include "systemHealthHelper.h"                     // system health helper file
 #include "environmentHelper.h"                      // the updateExtreme(), updateExtremes, checkAnomalies and getComfortStatus() functions
+#include "debugHelper.h"                            // Include debug macros
 
 Preferences preferences;
 
@@ -74,13 +78,13 @@ Preferences preferences;
 '* Set DEBUG to 0 to disable compiling of Serial.pring statements
 '****************************************************************************/
 
-#if DEBUG == 1
+/*#if DEBUG == 1
   #define debug_print(x)   Serial.print(x)
   #define debug_println(x) Serial.println(x)
 #else
   #define debug_print(x)
   #define debug_println(x)
-#endif
+#endif*/
 
 // ***************************************************************************
 // function to get data from DHT11
@@ -109,19 +113,22 @@ bool getTemperature() {
     // Don't reset to default values immediately - take current reading as new baseline
     minTemperature = maxTemperature = newValues.temperature;
     minHumidity = maxHumidity = newValues.humidity;
-    Serial.println(device + "Daily reset of temperature/humidity extremes");
+    //Serial.println(device + "Daily reset of temperature/humidity extremes");
+    debug_println(device + "Daily reset of temperature/humidity extremes");
   }
 
   
   if (dht.getStatus() != 0) {                     // Check if any reads failed and exit early (to try again).
 
-    Serial.println(device + "DHT11 error status: " + String(dht.getStatusString()));
-    Serial.printf(buffer, "%s DHT11 Error Status: %s", device, String(dht.getStatusString()));
-    Serial.println(buffer);
+    //Serial.println(device + "DHT11 error status: " + String(dht.getStatusString()));
+    debug_println(device + "DHT11 error status: " + String(dht.getStatusString()));
+    //Serial.printf(buffer, "%s DHT11 Error Status: %s", device, String(dht.getStatusString()));
+    debug_println(buffer);
+    //Serial.println(buffer);
 
     display.clearDisplay();
-    displayPrint(MEDIUM, 0, 0, "DHT11 ERROR");
-    displayPrint(MEDIUM, 0, 20, String(dht.getStatusString()));
+    oled::displayPrint(MEDIUM, 0, 0, "DHT11 ERROR");
+    oled::displayPrint(MEDIUM, 0, 20, String(dht.getStatusString()));
 
     delay(short_time);
 
@@ -214,19 +221,21 @@ void setup() {
   ArduinoCloud.addCallback(ArduinoIoTCloudEvent::DISCONNECT, doThisOnDisconnect);
 
   //display Welcome screen
-  displayWelcome();
+  oled::displayWelcome();
 
   // attempt IOT connection 
   int long t0 = millis();
   Serial.flush();
-  Serial.print("Attempting IOT Connection.");
+  debug_print("Attempting IOT Connection.");
+  //Serial.print("Attempting IOT Connection.");
 
   do{ 
     if(millis() - t0 <= IOT_CONNECT_TIME){                 // wait for synchronisation after 30s , reboot
       ArduinoCloud.update();
     }else{
       WiFi.mode(WIFI_OFF);
-      Serial.println("Rebooting...\n");
+      debug_println("Rebooting...\n");
+      //Serial.println("Rebooting...\n");
       Serial.flush();
       delay(500);
       ESP.restart();
@@ -239,9 +248,11 @@ void setup() {
   delay (1000);                                               // wait for ntp to sync
   timeUtility::obtainTime();                                  // get time from ntp server
     
-  Serial.printf(buffer,"DHT Xiao ESP32 example with tasks");
-  Serial.println(buffer);
-
+  //Serial.printf(buffer,"DHT Xiao ESP32 example with tasks");
+  debug_print(buffer + " DHT Xiao ESP32 example with tasks");
+  //Serial.println(buffer);
+  debug_println(buffer);
+  
   // Update the IoT Cloud monitor variable
   monitor = "Device booted (count: " + String(counter) + ") at " + ntpTime;
   // Generate and send initial health report
@@ -249,8 +260,9 @@ void setup() {
   bootReport = "BOOT | " + bootReport + " | Boot count: " + String(counter);
   monitor = bootReport;
   ArduinoCloud.update();
-  
-  Serial.println("**** SET UP COMPLETE ****");
+
+  debug_println("**** SET UP COMPLETE ****");
+  //Serial.println("**** SET UP COMPLETE ****");
 
 } // void setup()
 
@@ -268,21 +280,22 @@ void loop() {
   
   transferNumber ++;
   transfers = transferNumber;             // update Cloud Variable
-  Serial.printf("SSID: %s Transfer # %i\n", SSID, transferNumber);
+  debug_print("SSID: " + SSID + " Transfer # " + transferNumber);
+  //Serial.printf("SSID: %s Transfer # %i\n", SSID, transferNumber);
     
   // display WiFi connection message ONLY ONCE
   if (transfers <= 1) {
 
     display.clearDisplay();
-    displayPrint(MEDIUM, 0, 0, "CONNECTED:");
+    oled::displayPrint(MEDIUM, 0, 0, "CONNECTED:");
     String ssid_text = SSID;
 
     // change text size dependent on SSID length
     int ssid_len = ssid_text.length();
     if (ssid_len > 10) {
-      displayPrint(SMALL, 10, 30, SSID);
+      oled::displayPrint(SMALL, 10, 30, SSID);
     } else {
-      displayPrint(MEDIUM, 0, 30, SSID);
+      oled::displayPrint(MEDIUM, 0, 30, SSID);
     }
 
     delay(long_delay);
@@ -292,13 +305,13 @@ void loop() {
   // Temperature data is displayed from getTemperature() function
   // display all data at once
   display.clearDisplay();
-  displayPrint(SMALL, 13, 5, "TEMP and HUMIDITY");
-  drawHeaderLine();
+  oled::displayPrint(SMALL, 13, 5, "TEMP and HUMIDITY");
+  oled::drawHeaderLine();
 
-  displayPrint(SMALL, 0, 21, "TEMPERATURE " + String(xiao_19_temperature) + "C");
-  displayPrint(SMALL, 0, 33, "HUMIDITY    " + String(xiao_19_humidity) + "%");
-  displayPrint(SMALL, 0, 45, "DEWPOINT    " + String(xiao_19_depoint) + "C");
-  displayPrint(SMALL, 0, 57, "Comfort     " + String(xiao_19_comfort));
+  oled::displayPrint(SMALL, 0, 21, "TEMPERATURE " + String(xiao_19_temperature) + "C");
+  oled::displayPrint(SMALL, 0, 33, "HUMIDITY    " + String(xiao_19_humidity) + "%");
+  oled::displayPrint(SMALL, 0, 45, "DEWPOINT    " + String(xiao_19_depoint) + "C");
+  oled::displayPrint(SMALL, 0, 57, "Comfort     " + String(xiao_19_comfort));
 
   // The main display is on for longer
   delay(long_delay);
@@ -306,10 +319,10 @@ void loop() {
   // display data one page at a time
   // **** TIME DISPLAY ****
   display.clearDisplay();
-  displayPrint(MEDIUM, 42, 0, "TIME");
-  drawHeaderLine();
-  displayPrint(LARGE, 20, 26, ntpTime);     // ntpTime variable from obtainTime()
-  showCopyright();
+  oled::displayPrint(MEDIUM, 42, 0, "TIME");
+  oled::drawHeaderLine();
+  oled::displayPrint(LARGE, 20, 26, ntpTime);     // ntpTime variable from obtainTime()
+  oled::showCopyright();
 
   delay(short_time);
 
@@ -318,10 +331,10 @@ void loop() {
   timeUtility::obtainTime();                              // obtain the time and update IOT variable
   ArduinoCloud.update();                     // update the Arduino IOT
   display.clearDisplay();
-  displayPrint(MEDIUM, 42, 0, "TEMP");
-  drawHeaderLine();
-  displayPrint(LARGE, 10, 26, String(xiao_19_temperature) + "C");
-  showCopyright();
+  oled::displayPrint(MEDIUM, 42, 0, "TEMP");
+  oled::drawHeaderLine();
+  oled::displayPrint(LARGE, 10, 26, String(xiao_19_temperature) + "C");
+  oled::showCopyright();
 
   delay(short_time);
 
@@ -330,20 +343,20 @@ void loop() {
   getTemperature();                       // get data from DHT11 and update IOT variables
   ArduinoCloud.update();                  // update the Arduino IOT
   display.clearDisplay();
-  displayPrint(MEDIUM, 18, 0, "HUMIDITY");
-  drawHeaderLine();
-  displayPrint(LARGE, 10, 26, String(xiao_19_humidity) + "%");
-  showCopyright();
+  oled::displayPrint(MEDIUM, 18, 0, "HUMIDITY");
+  oled::drawHeaderLine();
+  oled::displayPrint(LARGE, 10, 26, String(xiao_19_humidity) + "%");
+  oled::showCopyright();
 
   delay(short_time);
 
   // draw a graph for temperature and humidity
   // **** GRAPH DISPLAY ****
   display.clearDisplay();
-  displayPrint(MEDIUM, 16, 0, String(xiao_19_temperature, 0) + "C");
-  displayPrint(MEDIUM, 70, 0, String(xiao_19_humidity, 0) + "%");
+  oled::displayPrint(MEDIUM, 16, 0, String(xiao_19_temperature, 0) + "C");
+  oled::displayPrint(MEDIUM, 70, 0, String(xiao_19_humidity, 0) + "%");
 
-  drawHeaderLine();
+  oled::drawHeaderLine();
 
   //                                          X,   Y,   W,  H, LOW VALUE,  HIGH VAL,   INC, DIG
   DrawBarChartV(display, xiao_19_temperature, 15,  60, 25, 35, lowTempVal, highTempVal, 10, 0, "Temp", Redraw1);
@@ -353,7 +366,7 @@ void loop() {
 
   display.clearDisplay();
   
-  displayPrint(MEDIUM, 16, 0, "TEMP:" + String(xiao_19_temperature, 0) + "C");
+  oled::displayPrint(MEDIUM, 16, 0, "TEMP:" + String(xiao_19_temperature, 0) + "C");
   
   //                                     X,  Y,  R,   Low,       High,      inc,  sweep,   label
   DrawDial(display, xiao_19_temperature, 65, 52, 25, lowTempVal, highTempVal, 5,   0, 200, "Temp", Redraw3);
@@ -362,7 +375,7 @@ void loop() {
   
   display.clearDisplay();
 
-  displayPrint(MEDIUM, 24, 0, "HUM:" + String(xiao_19_humidity, 0) + "%");
+  oled::displayPrint(MEDIUM, 24, 0, "HUM:" + String(xiao_19_humidity, 0) + "%");
   
   DrawDial(display, xiao_19_humidity, 65, 52, 25, lowHumVal, highHumVal, 25, 0, 200, "Hum", Redraw3);
   
@@ -373,8 +386,8 @@ void loop() {
   getTemperature();                       // get data from DHT11 and update IOT variables
   ArduinoCloud.update();                  // update the Arduino IOT
   display.clearDisplay();
-  displayPrint(MEDIUM, 0, 0, "  COMFORT");
-  drawHeaderLine();
+  oled::displayPrint(MEDIUM, 0, 0, "  COMFORT");
+  oled::drawHeaderLine();
 
   // *************************************************
   // Set the position of the comfort text (central)
@@ -430,36 +443,12 @@ void loop() {
       break;
   }; // switch(txtlen)
 
-  displayPrint(textSize, x_posn, y_posn, xiao_19_comfort);
-  showEmail();
+  oled::displayPrint(textSize, x_posn, y_posn, xiao_19_comfort);
+  oled::showEmail();
 
   delay(short_time);
 
 } // void loop()
-
-void showCopyright() {                      // display the copyright text on last line
-  displayPrint(SMALL, 35, 57, copyright);
-}
-
-void showEmail() {                          // display the email address on the last line
-  displayPrint(SMALL, 17, 55, email);
-}
-
-void drawHeaderLine() {                     // display a line underneath the header
-  display.drawLine(5, 16, 120, 16, WHITE);
-}
-
-// *********************************************
-// * function to print to the display
-// *********************************************
-void displayPrint(int txtSize, int x_posn, int y_posn, String txt) {
-
-  display.setTextSize(txtSize);
-  display.setCursor(x_posn, y_posn);
-  display.print(txt);
-  display.display();
-
-}
 
 void DrawBarChartV(Adafruit_SSD1306 &d, double curval, double x, double y, double w, double h, double loval, double hival, double inc, double dig, String label, bool &Redraw)
 {
@@ -589,7 +578,8 @@ void DrawDial(Adafruit_SSD1306 &d, double curval, int cx, int cy, int r, double 
 // run on IOT connect
 void doThisOnConnect(){
   flagConnect = true;
-  Serial.println(">>>> Board successfully connected to Arduino IoT Cloud.");
+  debug_println(">>>> Board successfully connected to Arduino IoT Cloud.");
+  //Serial.println(">>>> Board successfully connected to Arduino IoT Cloud.");
   
   monitor = "CLOUD CONNECTED | Device: " + device + " | Time: " + ntpTime;
   ArduinoCloud.update();
@@ -607,8 +597,10 @@ void doThisOnDisconnect(){                        // en cas de déconnexion du I
   if (flagDisconnect == false) {
     startDisconnect = millis();                   // start of disconnect
     flagDisconnect = true;
-    Serial.print(">>>> Board disconnected from Arduino IoT Cloud  : ");
-    Serial.println(startDisconnect);
+    debug_print(">>>> Board disconnected from Arduino IoT Cloud  : ");
+    //Serial.print(">>>> Board disconnected from Arduino IoT Cloud  : ");
+    //Serial.println(startDisconnect);
+    debug_println(startDisconnect);
     
     monitor = "CLOUD DISCONNECTED | Will attempt to reconnect";
     ArduinoCloud.update();
@@ -617,7 +609,8 @@ void doThisOnDisconnect(){                        // en cas de déconnexion du I
 
 // run routine when IOT reports device is synced
 void doThisOnSync(){
-  Serial.println(">>>> Thing Properties SYNCHRONISED.");
+  debug_println(">>>> Thing Properties SYNCHRONISED.");
+  //Serial.println(">>>> Thing Properties SYNCHRONISED.");
 
   monitor = "CLOUD SYNCED | Variables synchronized with cloud";
   
@@ -629,8 +622,10 @@ void doThisOnSync(){
 
 // run routine when IOT reports connection
 void onNetworkConnect() {
-  Serial.print(">>>> CONNECTED to network: ");
+  debug_print(">>>> CONNECTED to network: ");
+  //Serial.print(">>>> CONNECTED to network: ");
   Serial.println(SECRET_SSID);
+  debug_println(SECRET_SSID);
 
   monitor = "WiFi CONNECTED | SSID: " + String(SSID) + " | IP: " +     
   WiFi.localIP().toString() + " | Signal: " + String(WiFi.RSSI()) + "dBm";
@@ -640,8 +635,10 @@ void onNetworkConnect() {
 
 // run routine when IOT reports dicsonnection
 void onNetworkDisconnect() {
-  Serial.print(">>>> DISCONNECTED from network: ");
-  Serial.println(SECRET_SSID);
+  debug_print(">>>> DISCONNECTED from network: ");
+  debug_println(SECRET_SSID);
+  //Serial.print(">>>> DISCONNECTED from network: ");
+  //Serial.println(SECRET_SSID);
   
   wifiDisconnections++;
   lastWifiUptime = millis();
@@ -653,7 +650,8 @@ void onNetworkDisconnect() {
 
 // run on network error
 void onNetworkError() {
-  Serial.println(">>>> NETWORK ERROR !");
+  debug_println(">>>> NETWORK ERROR !");
+  //Serial.println(">>>> NETWORK ERROR !");
 
   if (lastWifiUptime > 0) {
     totalWifiDowntime += (millis() - lastWifiUptime);
@@ -663,16 +661,4 @@ void onNetworkError() {
   ArduinoCloud.update();
   
 }
-
-void displayWelcome(){
-
-  //display Welcome screen
-  display.clearDisplay();
-  displayPrint(MEDIUM, 0, 0,  " *Welcome*");
-  displayPrint(MEDIUM, 0, 20, "ArduinoIOT");
-  displayPrint(SMALL, 0, 45, "Code by Steve Fuller");
-  displayPrint(SMALL, 10, 55, "....connecting....");
-
-}
-
 

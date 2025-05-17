@@ -1,9 +1,17 @@
+/*******************************************************************************
+*
+* timeHelper.h
+* Standalone helper function for connecting to ntp server
+*
+*******************************************************************************/
+
 // timeHelper.h
 #ifndef TIME_HELPER
 #define TIME_HELPER
 
 #include <time.h>
 #include "globals.h"
+#include "debugHelper.h"            // Include debug macros
 
 namespace timeUtility{
 
@@ -20,7 +28,8 @@ namespace timeUtility{
   void obtainTime() {
     struct tm timeinfo;
     if(!getLocalTime(&timeinfo)){
-      Serial.println("Failed to obtain time");
+      debug_println("Failed to obtain time");
+      //Serial.println("Failed to obtain time");
       return;
     }
 

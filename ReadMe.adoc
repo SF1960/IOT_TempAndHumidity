@@ -12,8 +12,10 @@
 | 02  | Xiao_Weather_may25a.ino     | Added OLED for local display                           | 19/06/2023 
 | 03  | Xiao_Weather_may25a.ino     | Added graphs for temp & hum                            | 21/06/2023 
 | 04  | Xiao_sensor23_Kitchen.ino   | Added DEBUG check for USB or Power supply connection   | 28/01/2025
-| 05  | sensor23_Kitchen_aug21a.ino | Improved GMT/BST detection and display of correct time | 20/04/2025
-| 05  | sensor23_Kitchen_aug21a.ino | Added a device restart function after 24 hours         | 26/04/2025
+| 05  | sensor23_Kitchen_aug21a.ino | Rewritten sketch after Arduino AI ruined original      | 2025-05-15
+| 06  | sensor23_Kitchen_aug21a.ino | Included 2 local files timeHelper.h and systemHealth.h | 2025-05-16
+| 07  | sensor23_Kitchen_aug21a.ino | Included a environmentHelper. h                        | 2025-05-16
+| 08  | sensor23_Kitchen_aug21a.ino | Included a debugHelper.h file                          | 2025-05-16
 |===
 
 = Project: {Xiao_Weather_Module}
@@ -30,12 +32,12 @@ Variables for Arduino IOT you need for this project.
 
 |===
 | Type    | Variable name       | Description 
-| String  | xiao_19_comfort;    | text variable to hold comfort information
-| float   | xiao_19_depoint;    | float variable dewpoint (spelt wrong)  
-| float   | xiao_19_heatindex;  | heatindex calculated by the DHT11
-| float   | xiao_19_humidity;   | humidity read from the DHT11
-| float   | xiao_19_temperature;| temperature read from the DHT11
-| String  | monitor             | text to transer to IOT and display in Dashboard
+| String  | xiao_19_comfort     | text variable to hold comfort information
+| float   | xiao_19_depoint     | float variable dewpoint (spelt wrong)  
+| float   | xiao_19_heatindex   | heatindex calculated by the DHT11
+| float   | xiao_19_humidity    | humidity read from the DHT11
+| float   | xiao_19_temperature | temperature read from the DHT11
+| String  | monitor             | USB and Sensor Data text to transer to IOT and display in Dashboard
 | Counter | transer             | number of transfers since last reboot
 | Cloud   | kitchen_Temp        | Google Home variable
 | Cloud   | kitchen_Hum         | Google Home variable
